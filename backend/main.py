@@ -2,6 +2,8 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from auth import verify_token
 from utils import pwd_context
 from supabase import create_client, Client
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from models import (
     CompanyRegistration, CompanyResponse,
@@ -17,6 +19,14 @@ import uuid
 load_dotenv()
 
 app = FastAPI()
+
+# Mount static files directory
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Serve favicon.ico
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return FileResponse("static/favicon.ico")
 
 # Initialize Supabase client with error handling
 try:
