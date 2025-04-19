@@ -2,8 +2,12 @@ import fs        from 'fs';
 import crypto    from 'crypto';
 import 'dotenv/config.js';
 import { ethers } from 'ethers';
-import abiJson    from '../artifacts/contracts/EurekaInvoiceRegistry.sol/EurekaInvoiceRegistry.json' assert { type: 'json' };
-
+const abiJson = JSON.parse(
+    fs.readFileSync(
+      new URL('../artifacts/contracts/EurekaInvoiceRegistry.sol/EurekaInvoiceRegistry.json', import.meta.url),
+      'utf8'
+    )
+  );
 const PDF_PATH = process.argv[2];           // pass Invoice.pdf as CLI arg
 const CODE     = process.argv[3] || 'INV-0000-0000';
 const REG_ADDR = process.argv[4] || '0xDeployedAddressHere';
