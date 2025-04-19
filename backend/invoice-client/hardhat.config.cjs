@@ -1,5 +1,6 @@
 require('@nomicfoundation/hardhat-toolbox');
 require('dotenv').config();          // pull RPC_URL & PRIVATE_KEY
+require('mocha')
 
 module.exports = {
   solidity: '0.8.20',
