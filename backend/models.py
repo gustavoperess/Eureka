@@ -24,7 +24,7 @@ class UserRegistration(BaseModel):
     full_name: Annotated[str, constr(min_length=2, max_length=255)]
     email: EmailStr
     company_id: uuid.UUID
-    password_hash: str
+    password: Annotated[str, constr(min_length=8)]
 
 class UserResponse(BaseModel):
     id: uuid.UUID
@@ -34,10 +34,12 @@ class UserResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-# Login Log Models
+# User Login Model
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
 class LoginLogRegistration(BaseModel):
     user_id: uuid.UUID
-
 class LoginLogResponse(BaseModel):
     id: int
     user_id: uuid.UUID
