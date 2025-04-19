@@ -33,11 +33,11 @@ export default function Hero() {
           <div className="flex justify-center">
             <div className="relative w-full max-w-md h-80 transform rotate-3 hover:rotate-0 transition-transform duration-300">
               <Image
-                src="/logo.svg"
+                src="/eureka.jpg"
                 alt="Eureka Verification"
                 fill
-                style={{ objectFit: 'contain' }}
-                className="drop-shadow-2xl filter brightness-110"
+                style={{ objectFit: 'contain', borderWidth: '1px' }}
+                className="drop-shadow-2xl filter brightness-110 border border-gray-300"
                 priority
               />
             </div>

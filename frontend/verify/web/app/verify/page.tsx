@@ -29,7 +29,7 @@ export default function VerifyPage() {
               </li>
               <li>
                 <p className="text-gray-700">
-                  <span className="font-medium">Find the verification code</span> - Bills typically include a verification code in the format "HB-XXXX-YYYY".
+                  <span className="font-medium">Find the verification code</span> - Bills typically include a verification code in the format "XXXX-YYYY".
                 </p>
               </li>
               <li>

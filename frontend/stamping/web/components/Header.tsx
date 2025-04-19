@@ -12,7 +12,13 @@ export default function Header() {
       <div className="container mx-auto px-4 flex justify-between items-center">
         <Link href="/" className="flex items-center gap-2">
           <div className="relative w-10 h-10">
-            <Image src="/logo.svg" alt="Eureka Logo" fill className="object-contain" />
+            <Image 
+              src="/eureka.jpg" 
+              alt="Eureka Logo" 
+              fill 
+              className="object-contain border border-gray-300" 
+              style={{ borderWidth: '1px' }}
+            />
           </div>
           <span className="font-bold text-2xl text-blue-600">Eureka</span>
         </Link>
