@@ -1,10 +1,16 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, status
 from auth import verify_token
 from supabase import create_client, Client
-from models import UserRegistration, UserResponse
+from models import (
+    CompanyRegistration, CompanyResponse,
+    UserRegistration, UserResponse,
+    LoginLogRegistration
+)
 import os
 from dotenv import load_dotenv
 from passlib.context import CryptContext
+from datetime import datetime
+import uuid
 
 load_dotenv()
 
@@ -34,46 +40,187 @@ def read_root():
 def protected_route(user=Depends(verify_token)):
     return {"message": "You are authenticated!", "user": user}
 
-@app.post("/register", response_model=UserResponse)
-async def register_user(user_data: UserRegistration):
+@app.post("/register/company", response_model=CompanyResponse)
+async def register_company(company_data: CompanyRegistration):
     try:
-        # Create user in Supabase Auth
-        auth_response = supabase.auth.sign_up({
-            "email": user_data.email,
-            "password": user_data.password,
-        })
-        
-        if not auth_response.user:
-            raise HTTPException(status_code=400, detail="Failed to create user")
+        # Check if company email already exists
+        existing_company = supabase.table("companies").select("*").eq("email", company_data.email).execute()
+        if existing_company.data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Company with this email already exists"
+            )
         
         # Hash the password
-        hashed_password = pwd_context.hash(user_data.password)
+        hashed_password = pwd_context.hash(company_data.password)
         
-        # Store additional user data in Supabase database
+        # Create company record
         data = {
-            "id": auth_response.user.id,
-            "username": user_data.username,
-            "full_name": user_data.full_name,
-            "email": user_data.email,
-            "company_name": user_data.company_name,
-            "password_hash": hashed_password
+            "name": company_data.name,
+            "email": company_data.email,
+            "password": hashed_password,
+            "registered_address": company_data.registered_address
         }
         
-        # Insert user data into the 'users' table
+        result = supabase.table("companies").insert(data).execute()
+        
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Failed to create company"
+            )
+        
+        company = result.data[0]
+        return CompanyResponse(
+            id=company["id"],
+            name=company["name"],
+            email=company["email"],
+            registered_address=company["registered_address"],
+            created_at=company["created_at"],
+            updated_at=company["updated_at"]
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error in register_company: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+@app.post("/login/company")
+async def login_company(email: str, password: str):
+    try:
+        # Get company by email
+        result = supabase.table("companies").select("*").eq("email", email).execute()
+        
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password"
+            )
+        
+        company = result.data[0]
+        
+        # Verify password
+        if not pwd_context.verify(password, company["password"]):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password"
+            )
+        
+        # Return company data without password
+        return {
+            "id": company["id"],
+            "name": company["name"],
+            "email": company["email"],
+            "registered_address": company["registered_address"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error in login_company: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+@app.post("/register/user", response_model=UserResponse)
+async def register_user(user_data: UserRegistration):
+    try:
+        # Check if user email already exists
+        existing_user = supabase.table("users").select("*").eq("email", user_data.email).execute()
+        if existing_user.data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User with this email already exists"
+            )
+        
+        # Verify company exists
+        company = supabase.table("companies").select("*").eq("id", str(user_data.company_id)).execute()
+        if not company.data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Company not found"
+            )
+        
+        # Create user record
+        data = {
+            "full_name": user_data.full_name,
+            "email": user_data.email,
+            "company_id": str(user_data.company_id),
+            "password_hash": user_data.password_hash
+        }
+        
         result = supabase.table("users").insert(data).execute()
         
         if not result.data:
-            raise HTTPException(status_code=400, detail="Failed to create user record")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Failed to create user"
+            )
         
-        # Return user data without the password hash
+        user = result.data[0]
         return UserResponse(
-            id=data["id"],
-            username=data["username"],
-            full_name=data["full_name"],
-            email=data["email"],
-            company_name=data["company_name"]
+            id=user["id"],
+            full_name=user["full_name"],
+            email=user["email"],
+            company_id=user["company_id"],
+            created_at=user["created_at"],
+            updated_at=user["updated_at"]
         )
         
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"Error in register_user: {str(e)}")  # Add logging
-        raise HTTPException(status_code=400, detail=str(e))
+        print(f"Error in register_user: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+@app.post("/login/user")
+async def login_user(email: str, password_hash: str):
+    try:
+        # Get user by email
+        result = supabase.table("users").select("*").eq("email", email).execute()
+        
+        if not result.data:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password"
+            )
+        
+        user = result.data[0]
+        
+        # Verify password hash
+        if password_hash != user["password_hash"]:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password"
+            )
+        
+        # Create login log entry
+        log_data = LoginLogRegistration(user_id=user["id"])
+        supabase.table("login_log").insert({
+            "user_id": str(log_data.user_id)
+        }).execute()
+        
+        # Return user data without password hash
+        return {
+            "id": user["id"],
+            "full_name": user["full_name"],
+            "email": user["email"],
+            "company_id": user["company_id"]
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error in login_user: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
