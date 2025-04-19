@@ -1,6 +1,8 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from auth import verify_token
+from utils import hash_password 
 from supabase import create_client, Client
+
 from models import (
     CompanyRegistration, CompanyResponse,
     UserRegistration, UserResponse,
@@ -130,38 +132,40 @@ async def login_company(email: str, password: str):
 @app.post("/register/user", response_model=UserResponse)
 async def register_user(user_data: UserRegistration):
     try:
-        # Check if user email already exists
+        # Check if email exists
         existing_user = supabase.table("users").select("*").eq("email", user_data.email).execute()
         if existing_user.data:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="User with this email already exists"
             )
-        
-        # Verify company exists
+
+        # Check if company exists
         company = supabase.table("companies").select("*").eq("id", str(user_data.company_id)).execute()
         if not company.data:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Company not found"
             )
-        
-        # Create user record
+
+        # Hash the password
+        hashed_password = hash_password(user_data.password_hash)
+
+        # Insert user
         data = {
             "full_name": user_data.full_name,
             "email": user_data.email,
             "company_id": str(user_data.company_id),
-            "password_hash": user_data.password_hash
+            "password_hash": hashed_password
         }
-        
         result = supabase.table("users").insert(data).execute()
-        
+
         if not result.data:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Failed to create user"
             )
-        
+
         user = result.data[0]
         return UserResponse(
             id=user["id"],
@@ -171,7 +175,7 @@ async def register_user(user_data: UserRegistration):
             created_at=user["created_at"],
             updated_at=user["updated_at"]
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:

@@ -24,14 +24,13 @@ class UserRegistration(BaseModel):
     full_name: Annotated[str, constr(min_length=2, max_length=255)]
     email: EmailStr
     company_id: uuid.UUID
-    password_hash: Annotated[str, constr(min_length=8)]
+    password_hash: str
 
 class UserResponse(BaseModel):
     id: uuid.UUID
     full_name: str
     email: EmailStr
     company_id: uuid.UUID
-    password_hash: str
     created_at: datetime
     updated_at: datetime
 
