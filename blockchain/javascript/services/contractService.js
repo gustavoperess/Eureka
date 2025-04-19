@@ -258,6 +258,16 @@ const txContract = async (method, ...args) => {
       throw new Error(`Method ${method} not found in contract`);
     }
     
+    // Check balance before attempting transaction
+    const balance = await provider.getBalance(wallet.address);
+    logDetail(`Account balance before transaction: ${ethers.utils.formatEther(balance)} ETH`);
+    
+    if (balance.isZero() || balance.lt(ethers.utils.parseUnits("0.01", "ether"))) {
+      const errorMsg = `Insufficient balance to pay for transaction fees. Please fund your account: ${wallet.address}`;
+      logDetail(`ERROR: ${errorMsg}`);
+      throw new Error(errorMsg);
+    }
+    
     // Use ethers.js to estimate gas
     logDetail(`Estimating gas for ${method}...`);
     let gasLimit;
@@ -272,6 +282,33 @@ const txContract = async (method, ...args) => {
       logDetail('Gas estimation successful:', gasLimit.toString());
     } catch (error) {
       logDetail(`Gas estimation failed: ${error.message}`);
+      
+      // Check if error is due to execution revert
+      if (error.message.includes("execution reverted")) {
+        // Get the error data which might contain a reason
+        let reason = "";
+        if (error.data) {
+          try {
+            // Try to parse the error data to get more details
+            const errorBytes = error.data;
+            logDetail(`Contract returned error data: ${errorBytes}`);
+            
+            // Common error cases for our contract
+            if (errorBytes === "0x1648fd01") {
+              reason = "NotAuthorised: Your account is not authorized as a signer. The owner of the contract needs to call addSigner('" + wallet.address + "') first.";
+            } else if (errorBytes.includes("InvoiceExists")) {
+              reason = "InvoiceExists: This invoice hashcode already exists in the contract.";
+            } else if (errorBytes.includes("InvalidHashcode")) {
+              reason = "InvalidHashcode: The invoice hashcode format is invalid. Must be INV-XXXX-XXXX.";
+            }
+          } catch (parseError) {
+            logDetail(`Error parsing error data: ${parseError.message}`);
+          }
+        }
+        
+        const detailedError = reason || "Contract execution would revert. Check contract permissions and arguments.";
+        throw new Error(`Transaction would fail: ${detailedError}`);
+      }
       
       // Use fallback gas limits if estimation fails
       if (method === 'submitInvoice') {
@@ -447,7 +484,7 @@ const revokeInvoice = async (hashcode) => {
     // Call revokeInvoice with the invoice hashcode
     return await txContract('revokeInvoice', hashcode);
   } catch (error) {
-    logDetail('Error in revokeInvoice:', { error: error.message, hashcode });
+    logDetail('Error in revokeInvoice:', { error: error.message });
     throw error;
   }
 };
@@ -575,7 +612,7 @@ const contractService = {
         },
         connection: {
           chain: network.chainId.toString(),
-          node: `${network.name} v${network.version}`,
+          node: `${network.name || 'Westend Asset Hub'} v${network.ensAddress || 'EVM'}`,
           signer: wallet.address,
           balance: ethers.utils.formatEther(balance)
         }
@@ -590,12 +627,12 @@ const contractService = {
   },
   
   // Read functions
-  getInvoice: async (invoiceHash) => {
+  getInvoice: async (hashcode) => {
     try {
-      return await getInvoice(invoiceHash);
+      return await getInvoice(hashcode);
     } catch (error) {
-      logDetail(`Error in getInvoice for ${invoiceHash}:`, { error: error.message });
-      return createPlaceholderInvoice(invoiceHash);
+      logDetail(`Error in getInvoice for ${hashcode}:`, { error: error.message });
+      return createPlaceholderInvoice(hashcode);
     }
   },
   
@@ -609,8 +646,8 @@ const contractService = {
   },
   
   // Write functions
-  submitInvoice: async (invoiceHash, invoiceURI, invoiceAddress) => {
-    logDetail(`Submitting invoice: SHA=${invoiceHash}, URI=${invoiceURI}, Address=${invoiceAddress}`);
+  submitInvoice: async (sha256Hash, hashcode) => {
+    logDetail(`Submitting invoice: SHA=${sha256Hash}, Hashcode=${hashcode}`);
     try {
       // Validate contract before submission
       const contractValidation = await contractService.validateContract();
@@ -618,27 +655,27 @@ const contractService = {
         throw new Error(`Cannot submit invoice: Contract validation failed: ${contractValidation.error}`);
       }
       
-      return await submitInvoice(invoiceHash, invoiceURI, invoiceAddress);
+      return await submitInvoice(sha256Hash, hashcode);
     } catch (error) {
       logDetail(`Error in submitInvoice:`, { error: error.message });
       throw error;
     }
   },
   
-  revokeInvoice: async (invoiceHash) => {
-    logDetail(`Revoking invoice: ${invoiceHash}`);
+  revokeInvoice: async (hashcode) => {
+    logDetail(`Revoking invoice: ${hashcode}`);
     try {
-      return await revokeInvoice(invoiceHash);
+      return await revokeInvoice(hashcode);
     } catch (error) {
       logDetail(`Error in revokeInvoice:`, { error: error.message });
       throw error;
     }
   },
   
-  completeInvoice: async (invoiceHash) => {
-    logDetail(`Completing invoice: ${invoiceHash}`);
+  completeInvoice: async (hashcode) => {
+    logDetail(`Completing invoice: ${hashcode}`);
     try {
-      return await completeInvoice(invoiceHash);
+      return await completeInvoice(hashcode);
     } catch (error) {
       logDetail(`Error in completeInvoice:`, { error: error.message });
       throw error;
