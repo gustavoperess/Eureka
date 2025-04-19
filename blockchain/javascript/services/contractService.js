@@ -28,6 +28,54 @@ let contract;
 let isConnected = false;
 let reconnecting = false;
 
+// Version-safe ethers helpers for v5/v6 compatibility
+const safeFormatEther = (value) => {
+  try {
+    // Try v6 style
+    if (typeof ethers.formatEther === 'function') {
+      return ethers.formatEther(value);
+    }
+    // Fall back to v5 style
+    return ethers.utils.formatEther(value);
+  } catch (e) {
+    return `Error formatting: ${value}`;
+  }
+};
+
+const safeFormatUnits = (value, units) => {
+  try {
+    // Try v6 style
+    if (typeof ethers.formatUnits === 'function') {
+      return ethers.formatUnits(value, units);
+    }
+    // Fall back to v5 style
+    return ethers.utils.formatUnits(value, units);
+  } catch (e) {
+    return `Error formatting: ${value}`;
+  }
+};
+
+const safeParseUnits = (value, units) => {
+  try {
+    // Try v6 style
+    if (typeof ethers.parseUnits === 'function') {
+      return ethers.parseUnits(value, units || 'ether');
+    }
+    // Fall back to v5 style
+    return ethers.utils.parseUnits(value, units || 'ether');
+  } catch (e) {
+    console.error('Error parsing units:', e);
+    // Last resort fallback - convert to raw number for ethers v6
+    if (units === 'ether') {
+      return BigInt(Math.floor(parseFloat(value) * 1e18));
+    } else if (units === 'gwei') {
+      return BigInt(Math.floor(parseFloat(value) * 1e9));
+    } else {
+      return BigInt(value);
+    }
+  }
+};
+
 const logDetail = (message, data = null) => {
   console.log(`[${new Date().toISOString()}] ${message}`);
   if (data) {
@@ -117,16 +165,39 @@ const initialize = async () => {
     
     logDetail('Initializing ethers.js provider...');
     
-    // Connect to Westend Asset Hub EVM endpoint
-    provider = new ethers.providers.JsonRpcProvider(WESTEND_ENDPOINT);
+    // Try to detect ethers version and use appropriate initialization
+    let ethersV6 = true;
+    
+    try {
+      // Test if formatEther is directly on the ethers object (v6 style)
+      if (typeof ethers.formatEther !== 'function') {
+        ethersV6 = false;
+      }
+    } catch (e) {
+      ethersV6 = false;
+    }
+    
+    logDetail(`Using ethers.js ${ethersV6 ? 'v6' : 'v5'} initialization style`);
+    
+    // Connect to Westend Asset Hub EVM endpoint using the appropriate style
+    if (ethersV6) {
+      provider = new ethers.JsonRpcProvider(WESTEND_ENDPOINT);
+    } else {
+      // v5 style
+      provider = new ethers.providers.JsonRpcProvider(WESTEND_ENDPOINT);
+    }
     
     // Ensure private key is in the right format
     const privateKey = process.env.PRIVATE_KEY.startsWith('0x') 
       ? process.env.PRIVATE_KEY 
       : `0x${process.env.PRIVATE_KEY}`;
     
-    // Create wallet with private key
-    wallet = new ethers.Wallet(privateKey, provider);
+    // Create wallet with private key using appropriate style
+    if (ethersV6) {
+      wallet = new ethers.Wallet(privateKey, provider);
+    } else {
+      wallet = new ethers.Wallet(privateKey, provider);
+    }
     
     logDetail(`Connected with address: ${wallet.address}`);
     
@@ -145,10 +216,10 @@ const initialize = async () => {
     
     // Check balance to ensure account is funded
     const balance = await provider.getBalance(wallet.address);
-    logDetail(`Account balance: ${ethers.utils.formatEther(balance)} ETH`);
+    logDetail(`Account balance: ${safeFormatEther(balance)} ETH`);
     
     // Verify we have enough balance for transactions
-    if (balance.isZero()) {
+    if (safeIsZero(balance) || safeLessThan(balance, safeParseUnits("0.01", "ether"))) {
       logDetail('WARNING: Account has zero balance, transactions will fail');
     }
     
@@ -178,6 +249,21 @@ const createPlaceholderInvoice = (hash = '') => {
   };
 };
 
+// Add this helper after the other safe* helper functions
+
+/**
+ * Safe JSON stringify that handles BigInt values
+ * @param {Object} obj - Object to stringify
+ * @returns {string} JSON string
+ */
+const JSONBigInt = {
+  stringify: (obj) => {
+    return JSON.stringify(obj, (key, value) => 
+      typeof value === 'bigint' ? value.toString() : value
+    );
+  }
+};
+
 // Call a read-only contract method
 const queryContract = async (method, ...args) => {
   await initialize();
@@ -194,7 +280,15 @@ const queryContract = async (method, ...args) => {
     
     // Call the contract's read method
     const result = await contract[method](...args);
-    logDetail(`Query result:`, result);
+    try {
+      logDetail(`Query result:`, JSON.parse(JSONBigInt.stringify(result)));
+    } catch (jsonError) {
+      logDetail(`Query result: [Cannot display - contains non-serializable values]`, {
+        resultType: typeof result,
+        isArray: Array.isArray(result),
+        hasProperties: result && typeof result === 'object' ? Object.keys(result).length : 0
+      });
+    }
     
     return result;
   } catch (error) {
@@ -260,9 +354,9 @@ const txContract = async (method, ...args) => {
     
     // Check balance before attempting transaction
     const balance = await provider.getBalance(wallet.address);
-    logDetail(`Account balance before transaction: ${ethers.utils.formatEther(balance)} ETH`);
+    logDetail(`Account balance before transaction: ${safeFormatEther(balance)} ETH`);
     
-    if (balance.isZero() || balance.lt(ethers.utils.parseUnits("0.01", "ether"))) {
+    if (safeIsZero(balance) || safeLessThan(balance, safeParseUnits("0.01", "ether"))) {
       const errorMsg = `Insufficient balance to pay for transaction fees. Please fund your account: ${wallet.address}`;
       logDetail(`ERROR: ${errorMsg}`);
       throw new Error(errorMsg);
@@ -312,9 +406,9 @@ const txContract = async (method, ...args) => {
       
       // Use fallback gas limits if estimation fails
       if (method === 'submitInvoice') {
-        gasLimit = ethers.BigNumber.from('8000000');
+        gasLimit = safeParseUnits('8000000', 0);
       } else {
-        gasLimit = ethers.BigNumber.from('5000000');
+        gasLimit = safeParseUnits('5000000', 0);
       }
       
       logDetail(`Using fallback gas limit: ${gasLimit.toString()}`);
@@ -330,7 +424,7 @@ const txContract = async (method, ...args) => {
       to: CONTRACT_ADDRESS,
       from: wallet.address,
       gasLimit: txOptions.gasLimit.toString(),
-      gasPrice: ethers.utils.formatUnits(txOptions.gasPrice, 'gwei') + ' gwei'
+      gasPrice: safeFormatUnits(txOptions.gasPrice, 'gwei') + ' gwei'
     });
     
     // Create promise to track transaction
@@ -501,24 +595,28 @@ const processInvoiceResult = (rawInvoice) => {
   }
   
   try {
-    logDetail('Processing raw invoice data:', rawInvoice);
+    // Don't try to log the raw invoice - it may contain BigInt values that can't be serialized
+    logDetail('Processing raw invoice data - hashcode:', rawInvoice.hashcode || 'unknown');
     
-    // For Solidity contract, extract the invoice struct fields
-    // The EVM contract returns data matching the struct fields in EurekaInvoiceRegistry.sol
+    // Safely convert properties, handling BigInt values
     const processedInvoice = {
-      hash: rawInvoice.hash || '',
+      // Convert hash (bytes32) to string properly
+      hash: rawInvoice.hash ? (typeof rawInvoice.hash === 'string' ? rawInvoice.hash : '0x' + Buffer.from(rawInvoice.hash).toString('hex')) : '',
       hashcode: rawInvoice.hashcode || '',
       issuer: rawInvoice.issuer || '',
-      timestamp: Number(rawInvoice.timestamp) || 0,
+      // Convert BigInt to Number safely
+      timestamp: rawInvoice.timestamp ? Number(rawInvoice.timestamp.toString()) : 0,
       revoked: Boolean(rawInvoice.revoked) || false,
-      completed: Boolean(rawInvoice.completed) || false,
-      status: getStatusString(rawInvoice)
+      completed: Boolean(rawInvoice.completed) || false
     };
+
+    // Add the status string
+    processedInvoice.status = getStatusString(processedInvoice);
     
     logDetail('Processed invoice:', processedInvoice);
     return processedInvoice;
   } catch (error) {
-    logDetail('Error processing invoice result:', { error: error.message, rawInvoice });
+    logDetail('Error processing invoice result:', { error: error.message });
     return createPlaceholderInvoice();
   }
 };
@@ -529,7 +627,7 @@ const processInvoiceResult = (rawInvoice) => {
  * @returns {string} Status string
  */
 const getStatusString = (invoice) => {
-  if (!invoice || !invoice.timestamp || invoice.timestamp.toString() === '0') {
+  if (!invoice || !invoice.timestamp || invoice.timestamp === 0) {
     return 'Unknown';
   }
   
@@ -542,6 +640,27 @@ const getStatusString = (invoice) => {
   }
   
   return 'Submitted';
+};
+
+// Add these helper functions after the other safe functions
+
+/**
+ * Safely check if a number/bigint is zero across ethers versions
+ */
+const safeIsZero = (value) => {
+  if (value === undefined || value === null) return true;
+  if (typeof value === 'bigint') return value === 0n;
+  if (typeof value.isZero === 'function') return value.isZero();
+  return BigInt(value) === 0n;
+};
+
+/**
+ * Safely compare if a < b across ethers versions
+ */
+const safeLessThan = (a, b) => {
+  if (typeof a === 'bigint' && typeof b === 'bigint') return a < b;
+  if (typeof a.lt === 'function') return a.lt(b);
+  return BigInt(a) < BigInt(b);
 };
 
 // Contract service functions to be exposed in the API
@@ -614,7 +733,7 @@ const contractService = {
           chain: network.chainId.toString(),
           node: `${network.name || 'Westend Asset Hub'} v${network.ensAddress || 'EVM'}`,
           signer: wallet.address,
-          balance: ethers.utils.formatEther(balance)
+          balance: safeFormatEther(balance)
         }
       };
     } catch (error) {
@@ -741,7 +860,7 @@ const contractService = {
         },
         account: {
           address: wallet.address,
-          balance: ethers.utils.formatEther(balance)
+          balance: safeFormatEther(balance)
         },
         contractAddress: CONTRACT_ADDRESS
       };

@@ -1,6 +1,8 @@
 "use client";
 
 import { FormEvent, useState, useRef, ChangeEvent } from 'react';
+import { verifyInvoice, VerificationResult } from '../services/blockchainService';
+import VerifyResult from './VerifyResult';
 
 export default function VerifyForm() {
   const [hash, setHash] = useState('');
@@ -8,13 +10,9 @@ export default function VerifyForm() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isComputingHash, setIsComputingHash] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [verificationResult, setVerificationResult] = useState<null | {
-    isValid: boolean;
-    status: 'paid' | 'unpaid';
-    amount?: string;
-    dueDate?: string;
-    payee?: string;
-  }>(null);
+  const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
+  const [showingResults, setShowingResults] = useState(false);
+  const [useMockData, setUseMockData] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -23,18 +21,28 @@ export default function VerifyForm() {
     setIsVerifying(true);
     setVerificationResult(null);
     
-    // TODO: Replace with actual blockchain verification logic
-    setTimeout(() => {
-      // Simulated response for now
+    try {
+      // Use the blockchain API to verify the invoice
+      const result = await verifyInvoice(hash.trim(), useMockData);
+      setVerificationResult(result);
+      setShowingResults(true);
+    } catch (error) {
+      console.error('Verification error:', error);
       setVerificationResult({
-        isValid: true,
-        status: 'unpaid',
-        amount: '$124.50',
-        dueDate: '2025-05-15',
-        payee: '0x1234...5678'
+        isValid: false,
+        status: 'unknown',
+        useMockData,
+        connectionError: true
       });
+    } finally {
       setIsVerifying(false);
-    }, 1500);
+    }
+  };
+
+  const handleVerifyAnother = () => {
+    setShowingResults(false);
+    setVerificationResult(null);
+    setHash('');
   };
 
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -100,8 +108,37 @@ export default function VerifyForm() {
     }
   };
 
+  // Toggle mock data state
+  const toggleMockData = () => {
+    setUseMockData(!useMockData);
+  };
+
+  // If we have verification results, show the results page
+  if (showingResults && verificationResult) {
+    return <VerifyResult result={verificationResult} onVerifyAnother={handleVerifyAnother} />;
+  }
+
+  // Otherwise show the form
   return (
     <div id="verify-section" className="w-full max-w-md mx-auto relative">
+      {/* Mock data toggle */}
+      <div className="absolute right-0 top-0 transform translate-x-2 -translate-y-12">
+        <label className="inline-flex items-center cursor-pointer">
+          <span className="mr-2 text-sm text-gray-700">
+            {useMockData ? 'Using Mock Data' : 'Using Real Data'}
+          </span>
+          <div className="relative">
+            <input 
+              type="checkbox" 
+              checked={useMockData} 
+              onChange={toggleMockData} 
+              className="sr-only peer"
+            />
+            <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+          </div>
+        </label>
+      </div>
+      
       {/* Light blue glow effect in the background */}
       <div className="absolute -inset-10 bg-blue-500/10 rounded-full blur-3xl opacity-50 -z-10"></div>
       
@@ -121,14 +158,14 @@ export default function VerifyForm() {
             <input
               type="text"
               id="hash"
-              placeholder="Enter you Hashcode here: XXXX-YYYY"
+              placeholder="Enter code XXXX-XXXX"
               value={hash}
               onChange={(e) => setHash(e.target.value)}
               className="w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               required
             />
           </div>
-          <p className="mt-2 text-xs text-gray-500">Enter the unique hash or code found on your bill</p>
+          <p className="mt-2 text-xs text-gray-500">Enter the unique code found on your bill (e.g. T4R7-L9P1)</p>
         </div>
         
         <div className="flex items-center justify-between">
@@ -148,66 +185,6 @@ export default function VerifyForm() {
             ) : 'Verify Bill'}
           </button>
         </div>
-
-        {verificationResult && (
-          <div className="mt-8 p-5 rounded-lg border animate-fadeIn">
-            <div className={`text-center mb-4 font-bold text-lg ${
-              verificationResult.isValid 
-                ? verificationResult.status === 'paid' 
-                  ? 'text-green-600' 
-                  : 'text-blue-600'
-                : 'text-red-600'
-            }`}>
-              {!verificationResult.isValid && (
-                <div className="flex items-center justify-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Invalid Bill
-                </div>
-              )}
-              {verificationResult.isValid && verificationResult.status === 'paid' && (
-                <div className="flex items-center justify-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Valid Bill - PAID
-                </div>
-              )}
-              {verificationResult.isValid && verificationResult.status === 'unpaid' && (
-                <div className="flex items-center justify-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Valid Bill - UNPAID
-                </div>
-              )}
-            </div>
-            
-            {verificationResult.isValid && (
-              <div className="space-y-3 text-gray-700 bg-gray-50 p-4 rounded-lg">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">Amount:</span> 
-                  <span className="font-bold text-xl">{verificationResult.amount}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">Due Date:</span> 
-                  <span>{verificationResult.dueDate}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">Payee:</span> 
-                  <span className="font-mono bg-gray-100 px-2 py-1 rounded text-sm">{verificationResult.payee}</span>
-                </div>
-                
-                {verificationResult.status === 'unpaid' && (
-                  <button className="w-full mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
-                    Pay Now
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        )}
       </form>
       
       <div 
