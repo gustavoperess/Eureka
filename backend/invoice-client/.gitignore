@@ -1,5 +1,6 @@
 node_modules
 .env
+.dotenv
 
 # Hardhat files
 /cache
