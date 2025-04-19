@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
  *      PLUS: on‑chain signature check so only whitelisted signers can store.
  */
 contract EurekaInvoiceRegistry is Ownable, Pausable {
+    constructor() Ownable(msg.sender) {}   // <-- add this line
     struct Invoice {
         bytes16  hash;        // MD5 of the PDF
         string   code;        // e.g. INV-1A2B-3C4D
