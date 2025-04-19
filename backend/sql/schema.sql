@@ -1,22 +1,39 @@
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Create users table
-CREATE TABLE IF NOT EXISTS users (
+-- Create tables
+CREATE TABLE IF NOT EXISTS companies (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    username TEXT UNIQUE NOT NULL,
-    full_name TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    company_name TEXT NOT NULL,
-    password_hash TEXT NOT NULL,  -- This will store the hashed password
+    name TEXT NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) UNIQUE NOT NULL,
+    registered_address TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS users (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    full_name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    company_id UUID NOT NULL,
+    password_hash TEXT NOT NULL,  -- This will store the hashed password
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    FOREIGN KEY (company_id) REFERENCES companies(id)
+);
+
+CREATE TABLE IF NOT EXISTS login_log (
+    id SERIAL PRIMARY KEY,
+    user_id UUID NOT NULL,
+    login_time TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
 -- Create indexes
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
-CREATE INDEX IF NOT EXISTS idx_users_company ON users(company_name);
+CREATE INDEX IF NOT EXISTS idx_users_company_id ON users(company_id);
+CREATE INDEX IF NOT EXISTS idx_companies_name ON companies(name);
 
 -- Enable Row Level Security
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
