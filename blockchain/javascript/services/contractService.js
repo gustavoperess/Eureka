@@ -6,7 +6,7 @@ const { cryptoWaitReady } = require('@polkadot/util-crypto');
 const contractAbi = require('../abi/contract-abi.json');
 
 // Contract address from the README
-const CONTRACT_ADDRESS = '0x19C8500bf08dDc7941801Fb629a4307C2bCdcD7E';
+const CONTRACT_ADDRESS = '0x3C197333cFDa62bcd12FEdcEc43e0b6929110355';
 // Using the correct Westend Asset Hub EVM endpoint
 const WESTEND_ENDPOINT = 'https://westend-asset-hub-eth-rpc.polkadot.io';
 const CHAIN_ID = 420420421; // Westend Asset Hub EVM Chain ID

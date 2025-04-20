@@ -12,7 +12,7 @@ from web3 import Web3
 load_dotenv()
 
 RPC_URL = 'https://westend-asset-hub-eth-rpc.polkadot.io'
-CONTRACT_ADDRESS = Web3.to_checksum_address('0x19C8500bf08dDc7941801Fb629a4307C2bCdcD7E')
+CONTRACT_ADDRESS = Web3.to_checksum_address('0x3C197333cFDa62bcd12FEdcEc43e0b6929110355')
 EXPECTED_WALLET_ADDRESS = Web3.to_checksum_address('0xeb202166015976623cDe87d4f2cAeF41abdb7177')
 ABI_PATH = './abi/contract-abi.json'
 NATIVE_TOKEN_DECIMALS = 12 # Assuming 12 for WND
