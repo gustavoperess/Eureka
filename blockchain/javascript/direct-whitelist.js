@@ -22,7 +22,7 @@ async function directWhitelist() {
     
     // Check if already whitelisted
     const readContract = new ethers.Contract(
-      '0x19C8500bf08dDc7941801Fb629a4307C2bCdcD7E',
+      '0x3C197333cFDa62bcd12FEdcEc43e0b6929110355',
       contractInterface,
       provider
     );
@@ -40,7 +40,7 @@ async function directWhitelist() {
     // Create the raw transaction
     const nonce = await provider.getTransactionCount(wallet.address);
     const tx = {
-      to: '0x19C8500bf08dDc7941801Fb629a4307C2bCdcD7E',
+      to: '0x3C197333cFDa62bcd12FEdcEc43e0b6929110355',
       data: data,
       nonce: nonce,
       gasPrice: 800, // Reduced from estimation

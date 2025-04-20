@@ -9,7 +9,7 @@ const { ethers } = require('ethers');
 // --- Configuration ---
 const RPC_URL   = 'https://westend-asset-hub-eth-rpc.polkadot.io';
 const CHAIN_ID  = 420420421; // # v6 change: Chain ID might be bigint or number, keep as number for provider for now.
-const CONTRACT  = '0x19C8500bf08dDc7941801Fb629a4307C2bCdcD7E';
+const CONTRACT  = '0x3C197333cFDa62bcd12FEdcEc43e0b6929110355';
 const ABI       = require('./abi/contract-abi.json');
 
 // --- Fee / Gas Constants ---

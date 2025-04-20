@@ -2,7 +2,7 @@
 const { ethers } = require('ethers');
 
 const RPC = 'https://westend-asset-hub-eth-rpc.polkadot.io';
-const CONTRACT = '0x19C8500bf08dDc7941801Fb629a4307C2bCdcD7E';
+const CONTRACT = '0x3C197333cFDa62bcd12FEdcEc43e0b6929110355';
 const ABI = [
   'event SignerAdded(address indexed signer)',
   'event SignerRemoved(address indexed signer)'

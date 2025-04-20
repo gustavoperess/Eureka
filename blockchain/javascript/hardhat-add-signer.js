@@ -1,7 +1,7 @@
 // Script to add signer using a more direct approach
 require('dotenv').config();
 const { ethers } = require('ethers');
-const CONTRACT_ADDRESS = '0x19C8500bf08dDc7941801Fb629a4307C2bCdcD7E';
+const CONTRACT_ADDRESS = '0x3C197333cFDa62bcd12FEdcEc43e0b6929110355';
 
 // Function selector for addSigner(address)
 const ADD_SIGNER_SELECTOR = 'eb12d61e';
