@@ -75,13 +75,6 @@ export default function VerifyResult({ result, onVerifyAnother }: VerifyResultPr
     </div>
   );
 
-  // Notice for backup source
-  const BackupSourceIndicator = () => (
-    <div className="bg-blue-100 p-2 mt-2 rounded-md text-sm text-blue-800">
-      <span className="font-bold">Data Source:</span> Document verified from server records.
-    </div>
-  );
-
   // Get status display text
   const getStatusDisplay = () => {
     if (!result.isValid) return 'INVALID';
@@ -105,7 +98,6 @@ export default function VerifyResult({ result, onVerifyAnother }: VerifyResultPr
           <p className="text-sm"><strong>Date:</strong> {formatDate(result.timestamp)}</p>
         </div>
         {result.connectionError && <ConnectionErrorIndicator />}
-        {result.fromBackup && <BackupSourceIndicator />}
       </div>
 
       {/* Document Information */}
