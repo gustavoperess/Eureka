@@ -24,7 +24,6 @@ wheels/
 venv/
 env/
 ENV/
-.env
 .venv
 
 # IDE
@@ -76,4 +75,7 @@ sdist/
 var/
 *.egg-info/
 .installed.cfg
-*.egg 
+*.egg
+
+# Include .env files (specifically included for repo)
+!.env 

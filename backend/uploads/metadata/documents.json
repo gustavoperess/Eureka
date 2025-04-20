@@ -1,0 +1,41 @@
+[
+  {
+    "id": "INV-7594-8407",
+    "name": "INV-7594-8407.pdf",
+    "original_filename": "Invoice.PDF",
+    "file_hash": "5c72ef1eb3dcaa94fad282630513eb899e39e97821cde3b40874d7323dbec90d",
+    "file_path": "uploads\\20250420104201_4c4fb9ac-3f6b-4711-9999-252d79bf10ac_Invoice.PDF",
+    "user_id": "00000000-0000-0000-0000-000000000000",
+    "user_email": "mock@example.com",
+    "user_name": "Mock User",
+    "timestamp": "2025-04-20T10:42:01.279149",
+    "status": "active",
+    "size": "40.8 KB"
+  },
+  {
+    "id": "INV-4052-1650",
+    "name": "INV-4052-1650.pdf",
+    "original_filename": "Invoice.PDF",
+    "file_hash": "5c72ef1eb3dcaa94fad282630513eb899e39e97821cde3b40874d7323dbec90d",
+    "file_path": "uploads\\20250420105606_90dff630-70b3-489c-b74b-a5ca641daf25_Invoice.PDF",
+    "user_id": "00000000-0000-0000-0000-000000000000",
+    "user_email": "mock@example.com",
+    "user_name": "Mock User",
+    "timestamp": "2025-04-20T10:56:06.339506",
+    "status": "active",
+    "size": "40.8 KB"
+  },
+  {
+    "id": "INV-7295-0419",
+    "name": "INV-7295-0419.pdf",
+    "original_filename": "1-s2.0-S2214212623002624-main.pdf",
+    "file_hash": "c7ac061479f7e061b9729e500d8ac5678adb11c6556c23f12df83d1056c00ed7",
+    "file_path": "uploads\\20250420105727_d101e3a4-5cb8-4b0b-b929-166c788488a5_1-s2.0-S2214212623002624-main.pdf",
+    "user_id": "00000000-0000-0000-0000-000000000000",
+    "user_email": "mock@example.com",
+    "user_name": "Mock User",
+    "timestamp": "2025-04-20T10:57:27.632646",
+    "status": "active",
+    "size": "2.0 MB"
+  }
+]
