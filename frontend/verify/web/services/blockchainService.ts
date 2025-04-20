@@ -16,7 +16,7 @@ export interface BlockchainInvoice {
 // Define a more user-friendly invoice format for the frontend
 export interface VerificationResult {
   isValid: boolean;
-  status: 'paid' | 'unpaid' | 'revoked' | 'unknown';
+  status: 'paid' | 'unpaid' | 'revoked' | 'unknown' | 'active' | 'completed';
   payee?: string;
   timestamp?: number;
   hash?: string;      // Blockchain transaction hash
@@ -117,10 +117,10 @@ export async function verifyInvoice(code: string, useMockData = false): Promise<
     }
     
     // Convert blockchain status to frontend status
-    let status: 'paid' | 'unpaid' | 'revoked' | 'unknown' = 'unknown';
+    let status: 'paid' | 'unpaid' | 'revoked' | 'unknown' | 'active' | 'completed' = 'unknown';
     
     if (invoice.completed) {
-      status = 'paid';
+      status = 'completed';
     } else if (invoice.revoked) {
       status = 'revoked';
     } else {

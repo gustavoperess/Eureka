@@ -2,50 +2,111 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import UploadForm from '@/components/UploadForm';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import { useAuth } from '@/contexts/AuthContext';
+import UploadForm from '../../components/UploadForm';
+import ProtectedRoute from '../../components/ProtectedRoute';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function Dashboard() {
   const { user, userType, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('upload');
-  const [userData, setUserData] = useState({
-    name: 'Dummy User',
-    email: 'dummy@eureka.com',
-    company: 'Demo Company',
-    joinDate: new Date().toLocaleDateString()
-  });
   
-  // Add company verification state
-  const [isCompanyVerified, setIsCompanyVerified] = useState(true);
+  // Check if the user is gustavomoreira@edutech.com for personalized experience
+  const isGustavoAccount = user?.email === 'gustavomoreira@edutech.com';
+  
+  // Mock blockchain data for timestamp
+  const blockchainStampData = {
+    timestamp: "2023-11-05T14:32:17Z",
+    block: 25483921,
+    txHash: "0x7a9d5d3c8dca2c9e8b9fa61eb9c0d1d308c13b92dccb0d13f11b3df9b80ba704"
+  };
+  
+  // Format date from blockchain timestamp
+  const formatBlockchainDate = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
   
   const [documents, setDocuments] = useState<any[]>([]);
   
-  // Simulate loading some dummy documents after a delay
+  // Load documents based on user
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDocuments([
-        {
-          id: 'doc-12345',
-          name: 'Contract-2023.pdf',
-          stamped: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-          status: 'verified'
-        },
-        {
-          id: 'doc-67890',
-          name: 'Invoice-April2023.pdf',
-          stamped: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-          status: 'verified'
-        }
-      ]);
-    }, 2000);
+      if (isGustavoAccount) {
+        // Custom docs for Gustavo
+        setDocuments([
+          {
+            id: 'inv-2025-2004',
+            name: 'INV-2025-2004.pdf',
+            stamped: '20/04/2025, 06:21:00 UTC',
+            status: 'active',
+            txHash: blockchainStampData.txHash,
+            size: '1.7 MB'
+          },
+          {
+            id: 'inv-2025-0420',
+            name: 'INV-2025-0420.pdf',
+            stamped: '20/04/2025, 09:47:12 UTC',
+            status: 'revoked',
+            txHash: '0x9c4d5f2e8bda1d9e7b0fa61fb8c0f2d409c15b94eccb0d13f22b5df9b80ba502',
+            size: '1.5 MB'
+          },
+          {
+            id: 'inv-2025-0421',
+            name: 'INV-2025-0421.pdf',
+            stamped: '20/04/2025, 09:53:12 UTC',
+            status: 'completed',
+            txHash: '0x8b3d6f1c7deb2c8f9b0ea72fb7c0f3e508d13a91ffcb0d13f33b7df9b80ba303',
+            size: '1.6 MB'
+          }
+        ]);
+      } else {
+        // Default docs for other users
+        setDocuments([
+          {
+            id: 'doc-12345',
+            name: 'Contract-2023.pdf',
+            stamped: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+            status: 'verified',
+            size: '1.2 MB'
+          },
+          {
+            id: 'doc-67890',
+            name: 'Invoice-April2023.pdf',
+            stamped: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+            status: 'verified',
+            size: '0.8 MB'
+          }
+        ]);
+      }
+    }, 1000); // reduced delay for better UX
     
     return () => clearTimeout(timer);
-  }, []);
+  }, [user]);
   
-  // Toggle company verification status
-  const toggleCompanyVerification = () => {
-    setIsCompanyVerified(!isCompanyVerified);
+  // Handle view document (redirect to verify page)
+  const handleViewDocument = (documentId: string) => {
+    console.log(`Redirecting to verify website for document: ${documentId}`);
+    
+    // Format the document ID for the verify website
+    let formattedCode;
+    
+    // Special handling for Gustavo's invoice
+    if (documentId === 'inv-2025-2004') {
+      // Use the actual invoice code format expected by the verify website
+      formattedCode = 'INV-2025-2004';
+    } else {
+      // For other documents, format as needed
+      formattedCode = documentId;
+    }
+    
+    // Redirect to the external verify website running on port 5000
+    window.open(`http://localhost:5000?code=${formattedCode}`, '_blank');
   };
   
   // Function to safely get the user name
@@ -56,7 +117,7 @@ export default function Dashboard() {
     } else if (userType === 'user' && 'fullName' in user) {
       return user.fullName;
     }
-    return '';
+    return isGustavoAccount ? 'Gustavo Moreira' : '';
   };
 
   return (
@@ -66,7 +127,10 @@ export default function Dashboard() {
         <div className="bg-white shadow rounded-lg p-4 mb-6 flex justify-between items-center">
           <div>
             <h2 className="text-xl font-semibold">Welcome{user ? `, ${getUserDisplayName()}` : ''}!</h2>
-            <p className="text-gray-600 text-sm">{user?.email}</p>
+            <p className="text-gray-600 text-sm">{user?.email || 'gustavomoreira@edutech.com'}</p>
+            {isGustavoAccount && (
+              <p className="text-blue-600 text-xs mt-1">EduTech Solutions • Premium Account</p>
+            )}
           </div>
           <button 
             onClick={logout}
@@ -76,122 +140,97 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* Existing dashboard content follows */}
+        {/* Dashboard content */}
         <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
         
-        {/* Upload section */}
+        {/* Upload section with UploadForm */}
         <div className="bg-white shadow rounded-lg p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Upload Document</h2>
           <p className="text-gray-600 mb-4">
             Upload a document to stamp it with blockchain technology.
           </p>
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-            <input
-              type="file"
-              id="file-upload"
-              className="hidden"
-            />
-            <label
-              htmlFor="file-upload"
-              className="cursor-pointer bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
-            >
-              Select File
-            </label>
-            <p className="text-gray-500 mt-2 text-sm">Or drag and drop files here</p>
-          </div>
+          <UploadForm />
         </div>
         
         {/* Recent documents section */}
         <div className="bg-white shadow rounded-lg p-6">
           <h2 className="text-xl font-semibold mb-4">Recent Documents</h2>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Document
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Stamped Date
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                <tr>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">Contract-123.pdf</div>
-                        <div className="text-sm text-gray-500">1.2 MB</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">Jan 10, 2024</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                      Verified
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <button className="text-indigo-600 hover:text-indigo-900 mr-3">View</button>
-                    <button className="text-indigo-600 hover:text-indigo-900">Download</button>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">Invoice-456.pdf</div>
-                        <div className="text-sm text-gray-500">0.8 MB</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">Jan 8, 2024</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                      Verified
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <button className="text-indigo-600 hover:text-indigo-900 mr-3">View</button>
-                    <button className="text-indigo-600 hover:text-indigo-900">Download</button>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">Agreement-789.pdf</div>
-                        <div className="text-sm text-gray-500">1.5 MB</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">Jan 5, 2024</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                      Pending
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <button className="text-indigo-600 hover:text-indigo-900 mr-3">View</button>
-                    <button className="text-indigo-600 hover:text-indigo-900">Download</button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          {documents.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Document
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Stamped Date
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {documents.map((doc) => (
+                    <tr key={doc.id}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">{doc.name}</div>
+                            <div className="text-sm text-gray-500">{doc.size}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{doc.stamped}</div>
+                        {doc.txHash && (
+                          <div className="text-xs text-gray-500 truncate max-w-xs" title={doc.txHash}>
+                            TX: {doc.txHash.substring(0, 10)}...
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          doc.status === 'verified' ? 'bg-green-100 text-green-800' : 
+                          doc.status === 'active' ? 'bg-blue-100 text-blue-800' :
+                          doc.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          doc.status === 'revoked' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {doc.status === 'verified' ? 'Verified' : 
+                           doc.status === 'active' ? 'Active' :
+                           doc.status === 'completed' ? 'Completed' :
+                           doc.status === 'revoked' ? 'Revoked' :
+                           'Pending'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <button 
+                          onClick={() => handleViewDocument(doc.id)}
+                          className="text-indigo-600 hover:text-indigo-900 flex items-center"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          Verify
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <p>Loading your documents...</p>
+              <div className="mt-2 w-8 h-8 border-t-2 border-b-2 border-blue-500 rounded-full animate-spin mx-auto"></div>
+            </div>
+          )}
         </div>
       </div>
     </ProtectedRoute>

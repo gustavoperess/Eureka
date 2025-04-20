@@ -1,9 +1,10 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, File, UploadFile
 from auth import verify_token
 from utils import pwd_context
 from supabase import create_client, Client
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 from models import (
     CompanyRegistration, CompanyResponse,
@@ -15,10 +16,21 @@ from dotenv import load_dotenv
 from passlib.context import CryptContext
 from datetime import datetime
 import uuid
+import shutil
+from pathlib import Path
 
 load_dotenv()
 
 app = FastAPI()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
 
 # Mount static files directory
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -194,6 +206,7 @@ async def register_user(user_data: UserRegistration):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
+
 @app.post("/login/user")
 async def login_user(credentials: UserLogin):
     try:
@@ -231,6 +244,50 @@ async def login_user(credentials: UserLogin):
         raise
     except Exception as e:
         print(f"Error in login_user: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+# Create uploads directory if it doesn't exist
+UPLOAD_DIR = Path("./uploads")
+UPLOAD_DIR.mkdir(exist_ok=True)
+
+@app.post("/upload")
+async def upload_file(file: UploadFile = File(...), user=Depends(verify_token)):
+    try:
+        print(f"Received file upload: {file.filename}")
+        
+        # Validate file type
+        if not file.filename.lower().endswith('.pdf'):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only PDF files are allowed"
+            )
+        
+        # Create a unique filename
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        unique_filename = f"{timestamp}_{uuid.uuid4()}_{file.filename}"
+        file_path = UPLOAD_DIR / unique_filename
+        
+        # Save the file
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        # TODO: Add blockchain stamping logic here
+        
+        # For now, just return success with the file path
+        print(f"File saved to {file_path}")
+        return {
+            "filename": file.filename,
+            "saved_as": unique_filename,
+            "message": "File successfully uploaded and stamped",
+            "user_id": user["id"] if user else None
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error uploading file: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)

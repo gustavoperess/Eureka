@@ -82,24 +82,37 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setIsLoading(true);
     try {
       let response;
+      console.log(`Attempting to login as ${type} with email: ${data.email}`);
       
       if (type === 'company') {
         response = await authAPI.loginCompany(data);
       } else {
         response = await authAPI.loginUser(data);
       }
+      
+      console.log('Login successful, response:', response);
 
-      // In a real app, the token would come from the backend
-      // For now, we'll simulate it
-      const mockToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+      // Check if response contains a token (for future backend implementation)
+      // For now, use a default token
+      let authToken;
+      if (response && response.token) {
+        console.log('Using token from response');
+        authToken = response.token;
+      } else {
+        console.log('Using default token (backend does not provide token yet)');
+        authToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
+      }
       
       // Save auth data
-      setLocalStorageItem('auth_token', mockToken);
+      setLocalStorageItem('auth_token', authToken);
+      setLocalStorageItem('authToken', authToken); // Use both names for compatibility
       setLocalStorageItem('user_type', type);
       setLocalStorageItem('user', JSON.stringify(response));
       
+      console.log('Auth data saved to localStorage');
+      
       // Update state
-      setToken(mockToken);
+      setToken(authToken);
       setUser(response);
       setUserType(type);
       setIsAuthenticated(true);
@@ -111,49 +124,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       
       // Check if this is a development environment with a network error
       if (process.env.NODE_ENV === 'development' && error.isNetworkError) {
-        console.warn('Network error during login - trying to use mock data fallback');
-        try {
-          // For dummy accounts in development, we can still authenticate them
-          if (data.email === 'dummy@eureka.com' && data.password === 'Monday100') {
-            const mockToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
-            
-            let mockUser;
-            if (type === 'company') {
-              mockUser = {
-                id: "company-dummy",
-                name: "Demo Company",
-                email: data.email,
-                registeredAddress: "123 Demo Street, Demo City",
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-              };
-            } else {
-              mockUser = {
-                id: "user-dummy",
-                fullName: "Dummy User",
-                email: data.email,
-                companyId: "00000000-0000-0000-0000-000000000000"
-              };
-            }
-            
-            // Save auth data
-            setLocalStorageItem('auth_token', mockToken);
-            setLocalStorageItem('user_type', type);
-            setLocalStorageItem('user', JSON.stringify(mockUser));
-            
-            // Update state
-            setToken(mockToken);
-            setUser(mockUser);
-            setUserType(type);
-            setIsAuthenticated(true);
-            
-            // Redirect to dashboard
-            router.push('/dashboard');
-            return;
-          }
-        } catch (fallbackError) {
-          console.error('Fallback login also failed:', fallbackError);
-        }
+        console.warn('Network error during login - backend might not be running');
+        throw new Error('Cannot connect to the server. Please make sure the backend is running.');
       }
       
       throw error;
@@ -165,6 +137,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const signup = async (data: SignupData, type: AuthUserType) => {
     setIsLoading(true);
     try {
+      console.log(`Attempting to register as ${type} with email: ${data.email}`);
+      
       if (type === 'company') {
         const companyData = {
           name: data.companyName || data.name,
@@ -173,95 +147,35 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           registeredAddress: data.registeredAddress
         };
         
+        console.log('Registering company with data:', companyData);
         const response = await authAPI.registerCompany(companyData);
+        console.log('Company registration successful:', response);
         
         // After successful registration, login the user
         await login({ email: data.email, password: data.password }, 'company');
       } else {
-        // For user signup, we'll use a default companyId if not provided
+        // For user signup
         const userData = {
           fullName: data.name,
           email: data.email,
           password: data.password,
-          // Using a default company ID for now
-          companyId: "00000000-0000-0000-0000-000000000000"
+          companyId: data.companyId || "00000000-0000-0000-0000-000000000000"
         };
         
-        try {
-          const response = await authAPI.registerUser(userData);
-          // After successful registration, login the user
-          await login({ email: data.email, password: data.password }, 'user');
-        } catch (err: any) {
-          // Check if this is a development environment with a network error
-          if (process.env.NODE_ENV === 'development' && err.isNetworkError) {
-            console.warn('Network error during user registration - using direct fallback auth');
-            
-            // Create a mock user response
-            const mockUserResponse = {
-              id: "user-" + Math.random().toString(36).substring(2, 9),
-              fullName: data.name,
-              email: data.email,
-              companyId: "00000000-0000-0000-0000-000000000000"
-            };
-            
-            // Mock token
-            const mockToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
-            
-            // Save auth data
-            setLocalStorageItem('auth_token', mockToken);
-            setLocalStorageItem('user_type', 'user');
-            setLocalStorageItem('user', JSON.stringify(mockUserResponse));
-            
-            // Update state
-            setToken(mockToken);
-            setUser(mockUserResponse);
-            setUserType('user');
-            setIsAuthenticated(true);
-            
-            // Redirect to dashboard
-            router.push('/dashboard');
-          } else {
-            // Rethrow non-network errors or in production
-            throw err;
-          }
-        }
+        console.log('Registering user with data:', userData);
+        const response = await authAPI.registerUser(userData);
+        console.log('User registration successful:', response);
+        
+        // After successful registration, login the user
+        await login({ email: data.email, password: data.password }, 'user');
       }
     } catch (error: any) {
       console.error('Signup error:', error);
       
-      // Check if this is a development environment with a network error
+      // Check if this is a network error
       if (process.env.NODE_ENV === 'development' && error.isNetworkError) {
-        console.warn('Network error during company registration - using direct fallback auth');
-        
-        if (type === 'company') {
-          // Create a mock company response
-          const mockCompanyResponse = {
-            id: "company-" + Math.random().toString(36).substring(2, 9),
-            name: data.companyName || data.name,
-            email: data.email,
-            registeredAddress: data.registeredAddress,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          };
-          
-          // Mock token
-          const mockToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
-          
-          // Save auth data
-          setLocalStorageItem('auth_token', mockToken);
-          setLocalStorageItem('user_type', 'company');
-          setLocalStorageItem('user', JSON.stringify(mockCompanyResponse));
-          
-          // Update state
-          setToken(mockToken);
-          setUser(mockCompanyResponse);
-          setUserType('company');
-          setIsAuthenticated(true);
-          
-          // Redirect to dashboard
-          router.push('/dashboard');
-          return;
-        }
+        console.warn('Network error during registration - backend might not be running');
+        throw new Error('Cannot connect to the server. Please make sure the backend is running.');
       }
       
       throw error;
@@ -271,8 +185,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const logout = () => {
-    // Clear local storage
+    console.log('Logging out user');
+    
+    // Clear all auth data
     removeLocalStorageItem('auth_token');
+    removeLocalStorageItem('authToken'); // Clear both names for compatibility
     removeLocalStorageItem('user_type');
     removeLocalStorageItem('user');
     
@@ -282,8 +199,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     setUserType(null);
     setIsAuthenticated(false);
     
-    // Redirect to login
-    router.push('/login');
+    // Redirect to homepage
+    router.push('/');
+    
+    console.log('Logout completed');
   };
 
   return (

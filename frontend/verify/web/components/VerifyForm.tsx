@@ -1,10 +1,12 @@
 "use client";
 
-import { FormEvent, useState, useRef, ChangeEvent } from 'react';
+import { FormEvent, useState, useRef, ChangeEvent, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { verifyInvoice, VerificationResult } from '../services/blockchainService';
 import VerifyResult from './VerifyResult';
 
 export default function VerifyForm() {
+  const searchParams = useSearchParams();
   const [hash, setHash] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -13,6 +15,43 @@ export default function VerifyForm() {
   const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
   const [showingResults, setShowingResults] = useState(false);
   const [useMockData, setUseMockData] = useState(false);
+
+  // Check for code in URL parameters when component mounts
+  useEffect(() => {
+    const codeFromUrl = searchParams.get('code');
+    if (codeFromUrl) {
+      console.log('Code found in URL:', codeFromUrl);
+      setHash(codeFromUrl);
+      
+      // Auto-verify the code from URL
+      verifyCodeFromUrl(codeFromUrl);
+    }
+  }, [searchParams, useMockData]);
+
+  // Function to verify a code provided in the URL
+  const verifyCodeFromUrl = async (code: string) => {
+    if (!code.trim()) return;
+
+    setIsVerifying(true);
+    setVerificationResult(null);
+    
+    try {
+      // Use the blockchain API to verify the invoice
+      const result = await verifyInvoice(code.trim(), useMockData);
+      setVerificationResult(result);
+      setShowingResults(true);
+    } catch (error) {
+      console.error('Verification error:', error);
+      setVerificationResult({
+        isValid: false,
+        status: 'unknown',
+        useMockData,
+        connectionError: true
+      });
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

@@ -5,7 +5,6 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 interface FetchOptions extends RequestInit {
   token?: string | null;
   params?: Record<string, string>;
-  mockData?: any; // Optional mock data for development fallback
 }
 
 interface FetchError extends Error {
@@ -93,13 +92,11 @@ async function requestWithMethod<T>(
     requestOptions.body = JSON.stringify(body);
   }
 
-  try {
-    // For development: if mock data is provided and we're in development, return it immediately
-    if (process.env.NODE_ENV === 'development' && options.mockData) {
-      console.log(`[DEV] Using mock data for ${method} ${url}`);
-      return options.mockData as T;
-    }
+  console.log(`API Request: ${method} ${fullUrl}`);
+  if (body) console.log('Request body:', body);
+  if (options.params) console.log('Request params:', options.params);
 
+  try {
     // Timeout for fetch request (10 seconds)
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
@@ -108,9 +105,12 @@ async function requestWithMethod<T>(
     const response = await fetch(fullUrl, requestOptions);
     clearTimeout(timeoutId);
     
+    console.log(`API Response status: ${response.status}`);
+    
     // Check for successful response
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      console.error(`API Error: ${response.status}`, errorData);
       const error = new Error(errorData.detail || response.statusText) as FetchError;
       error.status = response.status;
       error.data = errorData;
@@ -123,7 +123,9 @@ async function requestWithMethod<T>(
     }
     
     // Parse JSON
-    return await response.json();
+    const data = await response.json();
+    console.log('API Response data:', data);
+    return data;
   } catch (error: any) {
     // Check if this is a network error (like server not running)
     const isNetworkError = (
@@ -133,20 +135,10 @@ async function requestWithMethod<T>(
       !navigator.onLine
     );
 
-    if (isNetworkError && process.env.NODE_ENV === 'development') {
-      console.warn(`Network error for ${method} ${url}. Using fallback mock data if available.`);
-      
-      // If mockData is provided, use it as a fallback in development
-      if (options.mockData) {
-        console.log(`[DEV] Using mock data for ${method} ${url} after network error`);
-        return options.mockData as T;
-      }
-    }
-
     // Enhance error with more info
     if (error instanceof Error) {
       (error as FetchError).isNetworkError = isNetworkError;
-      console.error(`API request failed: ${method} ${url}`, error);
+      console.error(`API request failed: ${method} ${fullUrl}`, error);
     }
     
     throw error;

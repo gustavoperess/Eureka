@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 export default function UploadForm() {
   const [file, setFile] = useState<File | null>(null);
@@ -8,7 +8,23 @@ export default function UploadForm() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadComplete, setUploadComplete] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [authToken, setAuthToken] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Get auth token from localStorage on component mount
+  useEffect(() => {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        console.log('Auth token found');
+        setAuthToken(token);
+      } else {
+        console.warn('No auth token found');
+      }
+    } catch (error) {
+      console.error('Error retrieving auth token:', error);
+    }
+  }, []);
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -63,11 +79,40 @@ export default function UploadForm() {
       return;
     }
     
+    if (!authToken) {
+      setError('You need to be logged in to upload a document.');
+      return;
+    }
+    
     setIsUploading(true);
     setError(null);
     
-    // Simulate API call with timeout
-    setTimeout(() => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      console.log('Uploading file:', file.name);
+      
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${API_URL}/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+        },
+        body: formData,
+      });
+      
+      console.log('Upload response status:', response.status);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Upload error:', errorData);
+        throw new Error(errorData.detail || 'Failed to upload file');
+      }
+      
+      const data = await response.json();
+      console.log('Upload successful:', data);
+      
       setIsUploading(false);
       setUploadComplete(true);
       
@@ -76,23 +121,11 @@ export default function UploadForm() {
         setFile(null);
         setUploadComplete(false);
       }, 3000);
-    }, 2000);
-    
-    // In a real application, you would upload the file to your API
-    // const formData = new FormData();
-    // formData.append('file', file);
-    // try {
-    //   const response = await fetch('/api/upload', {
-    //     method: 'POST',
-    //     body: formData,
-    //   });
-    //   const data = await response.json();
-    //   setIsUploading(false);
-    //   setUploadComplete(true);
-    // } catch (error) {
-    //   setIsUploading(false);
-    //   setError('An error occurred while uploading. Please try again.');
-    // }
+    } catch (error) {
+      console.error('Upload error:', error);
+      setIsUploading(false);
+      setError('An error occurred while uploading. Please try again.');
+    }
   };
   
   const triggerFileInput = () => {
@@ -101,6 +134,12 @@ export default function UploadForm() {
   
   return (
     <div className="w-full">
+      {!authToken && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4" role="alert">
+          <p>You need to be logged in to upload and stamp documents.</p>
+        </div>
+      )}
+      
       <form onSubmit={handleSubmit} className="w-full">
         <div 
           className={`border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center 
@@ -176,7 +215,12 @@ export default function UploadForm() {
         {file && !uploadComplete && !isUploading && (
           <button
             type="submit"
-            className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-medium transition-colors"
+            disabled={!authToken}
+            className={`w-full mt-6 ${
+              authToken 
+                ? 'bg-blue-600 hover:bg-blue-700' 
+                : 'bg-gray-400 cursor-not-allowed'
+            } text-white py-3 px-6 rounded-lg font-medium transition-colors`}
           >
             Stamp Document
           </button>

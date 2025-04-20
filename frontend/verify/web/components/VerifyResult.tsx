@@ -32,6 +32,42 @@ export default function VerifyResult({ result, onVerifyAnother }: VerifyResultPr
     return hash;
   };
 
+  // Get the appropriate background color based on verification result
+  const getStatusBackgroundColor = () => {
+    if (!result.isValid) return 'bg-red-100'; // Invalid always gets red
+    
+    // For valid results, check the status
+    switch (result.status) {
+      case 'paid':
+      case 'completed':
+        return 'bg-orange-100'; // Verified and completed = Orange
+      case 'revoked':
+        return 'bg-red-100'; // Verified but revoked = Red
+      case 'unpaid':
+      case 'active':
+      default:
+        return 'bg-green-100'; // Active and verified = Green
+    }
+  };
+
+  // Get the appropriate text color based on verification result
+  const getStatusTextColor = () => {
+    if (!result.isValid) return 'text-red-800'; // Invalid always gets red
+    
+    // For valid results, check the status
+    switch (result.status) {
+      case 'paid':
+      case 'completed':
+        return 'text-orange-800'; // Verified and completed = Orange
+      case 'revoked':
+        return 'text-red-800'; // Verified but revoked = Red
+      case 'unpaid':
+      case 'active':
+      default:
+        return 'text-green-800'; // Active and verified = Green
+    }
+  };
+
   // Notice indicator for mock data
   const MockDataIndicator = () => (
     <div className="bg-yellow-100 p-2 mt-2 rounded-md text-sm text-yellow-800">
@@ -49,9 +85,10 @@ export default function VerifyResult({ result, onVerifyAnother }: VerifyResultPr
   return (
     <div className="bg-white shadow-lg rounded-lg overflow-hidden max-w-2xl mx-auto">
       {/* Verification Status Header */}
-      <div className={`p-4 ${result.isValid ? 'bg-green-100' : 'bg-red-100'}`}>
+      <div className={`p-4 ${getStatusBackgroundColor()}`}>
         <h2 className="text-lg font-bold">
-          VERIFIED STATUS: {result.isValid ? 'VERIFIED' : 'INVALID'}
+          VERIFIED STATUS: <span className={getStatusTextColor()}>{result.isValid ? 
+            result.status.toUpperCase() : 'INVALID'}</span>
         </h2>
         <div className="mt-2">
           <p className="text-sm"><strong>Date:</strong> {formatDate(result.timestamp)}</p>
@@ -109,7 +146,7 @@ export default function VerifyResult({ result, onVerifyAnother }: VerifyResultPr
           </div>
           <div>
             <p className="text-sm text-gray-600">Status</p>
-            <p className="text-sm font-semibold">{result.status.toUpperCase()}</p>
+            <p className={`text-sm font-semibold ${getStatusTextColor()}`}>{result.status.toUpperCase()}</p>
           </div>
           {result.payee && (
             <div>
