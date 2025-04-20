@@ -6,6 +6,8 @@ This project is our submission for the Polkadot x EasyA Hackathon, the plan we u
 
 Offers a blockchain-backed invoice fraud prevention to help users detect fake bills via hash comparison with simple UI.
 
+# VIDEO DEMO: https://www.youtube.com/watch?v=j1cVEVN0Vtg
+
 # Problem Statement
 * Fraud is a huge worldwide problem, according a report by Verafin (NASDAQ), it's estimated that total losses from fraud totalled $485.6 billion in 2023 alone (source: [Verafin](https://nd.nasdaq.com/rs/303-QKM-463/images/2024-Global-Financial-Crime-Report-Nasdaq-Verafin-20240115.pdf))
 * In the UK business fraud is also big problem, in 2022, £1.2 billion was stolen from UK businesses through invoice fraud alone (source: [UK Finance](https://www.ukfinance.org.uk/policy-and-guidance/reports-and-publications/annual-fraud-report-2023))
