@@ -35,7 +35,7 @@ var/
 .installed.cfg
 *.egg
 .python-version
-.env
+# .env  # Commenting out to allow .env files to be tracked
 venv/
 ENV/
 .vscode/
