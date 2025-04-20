@@ -1,3 +1,7 @@
+# Polkadot x EasyA Hackathon
+
+This project is our submission for the Polkadot x EasyA Hackathon, the plan we used for the hackathon is in Eureka.pdf.
+
 # Eureka Blockchain
 
 Offers a blockchain-backed invoice fraud prevention to help users detect fake bills via hash comparison with simple UI.
