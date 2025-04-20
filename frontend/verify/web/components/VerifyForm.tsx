@@ -14,7 +14,6 @@ export default function VerifyForm() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
   const [showingResults, setShowingResults] = useState(false);
-  const [useMockData, setUseMockData] = useState(false);
 
   // Check for code in URL parameters when component mounts
   useEffect(() => {
@@ -26,7 +25,7 @@ export default function VerifyForm() {
       // Auto-verify the code from URL
       verifyCodeFromUrl(codeFromUrl);
     }
-  }, [searchParams, useMockData]);
+  }, [searchParams]);
 
   // Function to verify a code provided in the URL
   const verifyCodeFromUrl = async (code: string) => {
@@ -37,7 +36,7 @@ export default function VerifyForm() {
     
     try {
       // Use the blockchain API to verify the invoice
-      const result = await verifyInvoice(code.trim(), useMockData);
+      const result = await verifyInvoice(code.trim());
       setVerificationResult(result);
       setShowingResults(true);
     } catch (error) {
@@ -45,7 +44,6 @@ export default function VerifyForm() {
       setVerificationResult({
         isValid: false,
         status: 'unknown',
-        useMockData,
         connectionError: true
       });
     } finally {
@@ -62,7 +60,7 @@ export default function VerifyForm() {
     
     try {
       // Use the blockchain API to verify the invoice
-      const result = await verifyInvoice(hash.trim(), useMockData);
+      const result = await verifyInvoice(hash.trim());
       setVerificationResult(result);
       setShowingResults(true);
     } catch (error) {
@@ -70,7 +68,6 @@ export default function VerifyForm() {
       setVerificationResult({
         isValid: false,
         status: 'unknown',
-        useMockData,
         connectionError: true
       });
     } finally {
@@ -84,72 +81,72 @@ export default function VerifyForm() {
     setHash('');
   };
 
+  // Add a direct upload and submit function
+  const uploadAndVerify = async (file: File) => {
+    if (!file) return;
+    
+    setIsComputingHash(true);
+    setUploadedFile(file);
+    
+    try {
+      // First try to verify by filename if it might contain an invoice code
+      if (file.name.includes('INV-') || file.name.includes('inv-')) {
+        // Extract possible invoice code from filename using regex
+        const match = file.name.match(/INV-\d{4}-\d{4}/i);
+        if (match) {
+          const invoiceCode = match[0].toUpperCase();
+          console.log(`Found invoice code in filename: ${invoiceCode}`);
+          setHash(invoiceCode);
+          
+          // Auto-submit with short delay
+          setTimeout(() => {
+            setIsComputingHash(false);
+            handleSubmit(new Event('submit') as any);
+          }, 500);
+          return;
+        }
+      }
+      
+      // Otherwise compute hash
+      const buffer = await file.arrayBuffer();
+      const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      setHash(hashHex);
+      
+      // Auto-submit
+      setTimeout(() => {
+        setIsComputingHash(false);
+        handleSubmit(new Event('submit') as any);
+      }, 500);
+    } catch (error) {
+      console.error('Error processing file:', error);
+      alert('Error processing file. Please try again or enter verification code manually.');
+      setIsComputingHash(false);
+    }
+  };
+
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    
-    const file = files[0];
-    if (file.type !== 'application/pdf') {
-      alert('Please upload a PDF file');
-      return;
-    }
-
-    setUploadedFile(file);
-    await computeHash(file);
+    uploadAndVerify(files[0]);
   };
 
   const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    
     const files = e.dataTransfer.files;
     if (!files || files.length === 0) return;
-    
-    const file = files[0];
-    if (file.type !== 'application/pdf') {
-      alert('Please upload a PDF file');
-      return;
-    }
-
-    setUploadedFile(file);
-    await computeHash(file);
+    uploadAndVerify(files[0]);
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
   };
 
-  const computeHash = async (file: File) => {
-    setIsComputingHash(true);
-    
-    try {
-      // Read the file as an ArrayBuffer
-      const buffer = await file.arrayBuffer();
-      
-      // Use the Web Crypto API to compute the SHA-256 hash
-      const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-      
-      // Convert the hash to a hex string
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-      
-      setHash(hashHex);
-    } catch (error) {
-      console.error('Error computing hash:', error);
-      alert('Error computing hash. Please try again.');
-    } finally {
-      setIsComputingHash(false);
-    }
-  };
-
   const triggerFileInput = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
     }
-  };
-
-  // Toggle mock data state
-  const toggleMockData = () => {
-    setUseMockData(!useMockData);
   };
 
   // If we have verification results, show the results page
@@ -160,24 +157,6 @@ export default function VerifyForm() {
   // Otherwise show the form
   return (
     <div id="verify-section" className="w-full max-w-md mx-auto relative">
-      {/* Mock data toggle */}
-      <div className="absolute right-0 top-0 transform translate-x-2 -translate-y-12">
-        <label className="inline-flex items-center cursor-pointer">
-          <span className="mr-2 text-sm text-gray-700">
-            {useMockData ? 'Using Mock Data' : 'Using Real Data'}
-          </span>
-          <div className="relative">
-            <input 
-              type="checkbox" 
-              checked={useMockData} 
-              onChange={toggleMockData} 
-              className="sr-only peer"
-            />
-            <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
-          </div>
-        </label>
-      </div>
-      
       {/* Light blue glow effect in the background */}
       <div className="absolute -inset-10 bg-blue-500/10 rounded-full blur-3xl opacity-50 -z-10"></div>
       

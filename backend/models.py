@@ -44,3 +44,26 @@ class LoginLogResponse(BaseModel):
     id: int
     user_id: uuid.UUID
     login_time: datetime
+
+# Document Models
+class DocumentMetadata(BaseModel):
+    id: str  # Format: INV-XXXX-XXXX
+    name: str
+    original_filename: str
+    file_hash: str
+    file_path: str
+    user_id: uuid.UUID
+    user_email: str
+    user_name: Optional[str] = None
+    timestamp: datetime
+    status: str = "active"
+    size: Optional[str] = None
+
+class DocumentResponse(BaseModel):
+    id: str
+    name: str
+    file_hash: str
+    user_id: uuid.UUID
+    timestamp: str
+    status: str
+    size: Optional[str] = None

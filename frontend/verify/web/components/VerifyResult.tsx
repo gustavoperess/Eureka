@@ -68,13 +68,6 @@ export default function VerifyResult({ result, onVerifyAnother }: VerifyResultPr
     }
   };
 
-  // Notice indicator for mock data
-  const MockDataIndicator = () => (
-    <div className="bg-yellow-100 p-2 mt-2 rounded-md text-sm text-yellow-800">
-      <span className="font-bold">Note:</span> Using mock data. Toggle real data to query the blockchain.
-    </div>
-  );
-
   // Notice for connection errors
   const ConnectionErrorIndicator = () => (
     <div className="bg-red-100 p-2 mt-2 rounded-md text-sm text-red-800">
@@ -82,19 +75,37 @@ export default function VerifyResult({ result, onVerifyAnother }: VerifyResultPr
     </div>
   );
 
+  // Notice for backup source
+  const BackupSourceIndicator = () => (
+    <div className="bg-blue-100 p-2 mt-2 rounded-md text-sm text-blue-800">
+      <span className="font-bold">Data Source:</span> Document verified from server records.
+    </div>
+  );
+
+  // Get status display text
+  const getStatusDisplay = () => {
+    if (!result.isValid) return 'INVALID';
+    
+    switch (result.status) {
+      case 'active':
+        return 'UNPAID';
+      default:
+        return result.status.toUpperCase();
+    }
+  };
+
   return (
     <div className="bg-white shadow-lg rounded-lg overflow-hidden max-w-2xl mx-auto">
       {/* Verification Status Header */}
       <div className={`p-4 ${getStatusBackgroundColor()}`}>
         <h2 className="text-lg font-bold">
-          VERIFIED STATUS: <span className={getStatusTextColor()}>{result.isValid ? 
-            result.status.toUpperCase() : 'INVALID'}</span>
+          VERIFIED STATUS: <span className={getStatusTextColor()}>{getStatusDisplay()}</span>
         </h2>
         <div className="mt-2">
           <p className="text-sm"><strong>Date:</strong> {formatDate(result.timestamp)}</p>
         </div>
-        {result.useMockData && <MockDataIndicator />}
-        {!result.useMockData && result.connectionError && <ConnectionErrorIndicator />}
+        {result.connectionError && <ConnectionErrorIndicator />}
+        {result.fromBackup && <BackupSourceIndicator />}
       </div>
 
       {/* Document Information */}
@@ -106,8 +117,8 @@ export default function VerifyResult({ result, onVerifyAnother }: VerifyResultPr
             <p className="font-mono text-sm">{result.code || 'INV-XXXX-XXXX'}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-600">Blockchain</p>
-            <p className="font-mono text-sm">Polkadot</p>
+            <p className="text-sm text-gray-600">Verification Source</p>
+            <p className="font-mono text-sm">{result.fromBackup ? 'Server Records' : 'Polkadot Blockchain'}</p>
           </div>
         </div>
       </div>
@@ -124,7 +135,7 @@ export default function VerifyResult({ result, onVerifyAnother }: VerifyResultPr
             </p>
           </div>
           <div>
-            <p className="text-sm text-gray-600">Transaction ID</p>
+            <p className="text-sm text-gray-600">{result.fromBackup ? 'File Hash' : 'Transaction ID'}</p>
             <p className="font-mono text-sm truncate" title={result.hash}>
               {getTransactionId(result.hash)}
             </p>
@@ -142,15 +153,15 @@ export default function VerifyResult({ result, onVerifyAnother }: VerifyResultPr
           </div>
           <div>
             <p className="text-sm text-gray-600">Verification System</p>
-            <p className="text-sm">Polkadot EVM Invoice Registry</p>
+            <p className="text-sm">{result.fromBackup ? 'Server Records' : 'Polkadot EVM Invoice Registry'}</p>
           </div>
           <div>
             <p className="text-sm text-gray-600">Status</p>
-            <p className={`text-sm font-semibold ${getStatusTextColor()}`}>{result.status.toUpperCase()}</p>
+            <p className={`text-sm font-semibold ${getStatusTextColor()}`}>{getStatusDisplay()}</p>
           </div>
           {result.payee && (
             <div>
-              <p className="text-sm text-gray-600">Issuer Address</p>
+              <p className="text-sm text-gray-600">{result.fromBackup ? 'Owner Email' : 'Issuer Address'}</p>
               <p className="text-sm font-mono">{formatAddress(result.payee)}</p>
             </div>
           )}

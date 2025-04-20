@@ -9,6 +9,7 @@ import { useAuth } from '../../contexts/AuthContext';
 export default function Dashboard() {
   const { user, userType, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('upload');
+  const [isLoading, setIsLoading] = useState(true);
   
   // Check if the user is gustavomoreira@edutech.com for personalized experience
   const isGustavoAccount = user?.email === 'gustavomoreira@edutech.com';
@@ -34,12 +35,61 @@ export default function Dashboard() {
   
   const [documents, setDocuments] = useState<any[]>([]);
   
+  // Function to fetch documents from the API
+  const fetchUserDocuments = async () => {
+    if (!user) return;
+    
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const authToken = localStorage.getItem('authToken');
+      
+      if (!authToken) {
+        console.warn('No auth token found');
+        return;
+      }
+      
+      const response = await fetch(`${API_URL}/documents`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch documents');
+      }
+      
+      const data = await response.json();
+      console.log('Fetched documents:', data);
+      
+      // Store in localStorage for quicker loading on next visit
+      localStorage.setItem('userDocuments', JSON.stringify(data));
+      
+      return data;
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+      
+      // Try to get from localStorage as fallback
+      const cachedDocs = localStorage.getItem('userDocuments');
+      if (cachedDocs) {
+        return JSON.parse(cachedDocs);
+      }
+      return [];
+    }
+  };
+  
   // Load documents based on user
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const loadDocuments = async () => {
+      setIsLoading(true);
+      
+      // Example documents (always shown)
+      let exampleDocs = [];
+      
       if (isGustavoAccount) {
         // Custom docs for Gustavo
-        setDocuments([
+        exampleDocs = [
           {
             id: 'inv-2025-2004',
             name: 'INV-2025-2004.pdf',
@@ -64,10 +114,10 @@ export default function Dashboard() {
             txHash: '0x8b3d6f1c7deb2c8f9b0ea72fb7c0f3e508d13a91ffcb0d13f33b7df9b80ba303',
             size: '1.6 MB'
           }
-        ]);
+        ];
       } else {
         // Default docs for other users
-        setDocuments([
+        exampleDocs = [
           {
             id: 'doc-12345',
             name: 'Contract-2023.pdf',
@@ -82,10 +132,35 @@ export default function Dashboard() {
             status: 'verified',
             size: '0.8 MB'
           }
-        ]);
+        ];
       }
-    }, 1000); // reduced delay for better UX
+      
+      // First try to get cached documents for quick loading
+      const cachedDocs = localStorage.getItem('userDocuments');
+      let userDocs = cachedDocs ? JSON.parse(cachedDocs) : [];
+      
+      // Then fetch from API and update later
+      const apiDocs = await fetchUserDocuments();
+      
+      if (apiDocs && apiDocs.length > 0) {
+        // Format API documents to match our UI format
+        userDocs = apiDocs.map((doc: any) => ({
+          id: doc.id,
+          name: doc.name,
+          stamped: new Date(doc.timestamp).toLocaleString(),
+          status: doc.status,
+          size: doc.size,
+          txHash: doc.txHash
+        }));
+      }
+      
+      // Combine user docs and example docs
+      setDocuments([...userDocs, ...exampleDocs]);
+      setIsLoading(false);
+    };
     
+    // Reduced delay for better UX
+    const timer = setTimeout(loadDocuments, 500);
     return () => clearTimeout(timer);
   }, [user]);
   
@@ -155,7 +230,7 @@ export default function Dashboard() {
         {/* Recent documents section */}
         <div className="bg-white shadow rounded-lg p-6">
           <h2 className="text-xl font-semibold mb-4">Recent Documents</h2>
-          {documents.length > 0 ? (
+          {!isLoading && documents.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -227,8 +302,10 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500">
-              <p>Loading your documents...</p>
-              <div className="mt-2 w-8 h-8 border-t-2 border-b-2 border-blue-500 rounded-full animate-spin mx-auto"></div>
+              <p>{isLoading ? 'Loading your documents...' : 'No documents found'}</p>
+              {isLoading && 
+                <div className="mt-2 w-8 h-8 border-t-2 border-b-2 border-blue-500 rounded-full animate-spin mx-auto"></div>
+              }
             </div>
           )}
         </div>

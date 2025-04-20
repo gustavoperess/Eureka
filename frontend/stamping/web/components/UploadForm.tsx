@@ -113,13 +113,35 @@ export default function UploadForm() {
       const data = await response.json();
       console.log('Upload successful:', data);
       
-      setIsUploading(false);
+      // Display document ID to the user
       setUploadComplete(true);
+      
+      // Update localStorage to store the newly created document ID
+      const uploadedDoc = {
+        id: data.id,
+        name: data.name,
+        stamped: new Date().toLocaleString(),
+        status: data.status,
+        size: data.size
+      };
+      
+      try {
+        // Try to update the local cache of documents to instantly show in dashboard
+        const cachedDocsJson = localStorage.getItem('userDocuments');
+        let cachedDocs = cachedDocsJson ? JSON.parse(cachedDocsJson) : [];
+        cachedDocs.unshift(uploadedDoc); // Add to the beginning of the array
+        localStorage.setItem('userDocuments', JSON.stringify(cachedDocs));
+      } catch (err) {
+        console.error('Error updating local document cache:', err);
+      }
       
       // Reset form after 3 seconds
       setTimeout(() => {
         setFile(null);
         setUploadComplete(false);
+        
+        // Reload the page to refresh the documents list
+        window.location.reload();
       }, 3000);
     } catch (error) {
       console.error('Upload error:', error);
