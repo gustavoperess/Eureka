@@ -17,5 +17,7 @@ Runs on: localhost:3001
 
 Auth and PDF:
 cd backend
-pip install -r requirements.txt
-uvicorn main:app --reload
+python3 -m venv venv
+source venv/bin/activate
+pipenv install -r requirements.txt 
+python -m uvicorn main:app --reload
